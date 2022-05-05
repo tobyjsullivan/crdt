@@ -1,3 +1,25 @@
+function compare(a, b) {
+  if (a === b) {
+    return 0;
+  }
+
+  // Give precedence to value deletions
+  if ([undefined, null].includes(a)) {
+    return 1;
+  } else if ([undefined, null].includes(b)) {
+    return -1;
+  }
+
+  // Offload the comparison algorithm
+  const ordered = [a, b].sort();
+
+  if (ordered[0] === a) {
+    return 1;
+  } else {
+    return -1;
+  }
+}
+
 // Removes outdated elements
 function compress(set) {
   const latestUpdates = {};
@@ -5,7 +27,23 @@ function compress(set) {
   for (const e of set) {
     const { key, timestamp } = e;
 
-    if (!latestUpdates[key] || latestUpdates[key].timestamp < timestamp) {
+    if (latestUpdates[key] && latestUpdates[key].timestamp === timestamp) {
+      // Break the tie
+      const { value: valueA } = latestUpdates[key];
+      const { value: valueB } = e;
+
+      // Design choice: resolve competing updates by looking at the value.
+      if (compare(valueA, valueB) >= 0) {
+        // Existing update wins. Drop the new value
+        continue;
+      } else {
+        // New update wins. Replace the previous update.
+        latestUpdates[key] = e;
+      }
+    } else if (
+      !latestUpdates[key] ||
+      latestUpdates[key].timestamp < timestamp
+    ) {
       latestUpdates[key] = e;
     }
   }
@@ -14,27 +52,7 @@ function compress(set) {
 }
 
 function merge(setA, setB) {
-  // Create the result set, consisting of all elements in setA
-  const result = [...setA];
-
-  // Add every element from setB for which there is no element in the result with a.key === b.key and a.timestamp >= b.timestamp
-  const latestUpdates = result.reduce((acc, { key, timestamp }) => {
-    if (!acc[key] || acc[key] < timestamp) {
-      acc[key] = timestamp;
-    }
-    return acc;
-  }, {});
-
-  for (const e of setB) {
-    const { key, timestamp } = e;
-
-    if (!latestUpdates[key] || latestUpdates[key] < timestamp) {
-      result.push(e);
-      latestUpdates[key] = timestamp;
-    }
-  }
-
-  return compress(result);
+  return compress([...setA, ...setB]);
 }
 
 function asObject(set) {
