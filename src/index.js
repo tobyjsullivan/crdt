@@ -20,7 +20,7 @@ function compare(a, b) {
   }
 }
 
-// Removes outdated elements
+// Reduces the set to only include latest updates
 function compress(set) {
   const latestUpdates = {};
 
