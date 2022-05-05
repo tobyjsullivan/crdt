@@ -24,6 +24,12 @@ const updateTitle4 = {
   timestamp: 4,
 };
 
+const updateStyleForeground5 = {
+  key: "style:foreground",
+  value: "#ffffff",
+  timestamp: 5,
+};
+
 describe(`merge(a, b)`, () => {
   test(`produces a set containing all elements with unique keys`, () => {
     const setA = [updateId1, updateTitle2];
@@ -139,4 +145,15 @@ describe(`asObject(s)`, () => {
     expect(result.title).toBe("A new title");
     expect(result.url).toBe("https://example.com/");
   });
+
+  test(`supports the object nesting syntax`, () => {
+    const input = [updateId1, updateStyleForeground5];
+
+    const result = asObject(input);
+
+    expect(result.id).toBe("c87c0491-5559-44b6-bf63-00a575e338ec");
+    expect(result.style.foreground).toBe("#ffffff");
+  });
+
+  // TODO: Handle overwriting objects with values and vice-versa
 });
