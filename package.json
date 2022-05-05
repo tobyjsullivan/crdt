@@ -1,0 +1,16 @@
+{
+  "name": "crdt",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Toby Sullivan <tobyjsullivan@gmail.com>",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "format": "yarn prettier --write ./**",
+    "test": "yarn jest"
+  },
+  "devDependencies": {
+    "jest": "^28.0.3",
+    "prettier": "^2.6.2"
+  }
+}
