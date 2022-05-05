@@ -52,6 +52,20 @@ describe(`merge(a, b)`, () => {
     expect(result).toContainEqual(update2);
     expect(result).toContainEqual(update3);
   });
+
+  test(`prunes outdated changes`, () => {
+    const setA = [update1, update2];
+    const setB = [update3, update4];
+
+    const result = merge(setA, setB);
+
+    expect(result.length).toBe(3);
+
+    // Check equality of fields, not object identity
+    expect(result).toContainEqual(update1);
+    expect(result).toContainEqual(update3);
+    expect(result).toContainEqual(update4);
+  });
 });
 
 describe(`asObject(s)`, () => {

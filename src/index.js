@@ -1,3 +1,18 @@
+// Removes outdated elements
+function compress(set) {
+  const latestUpdates = {};
+
+  for (const e of set) {
+    const { key, timestamp } = e;
+
+    if (!latestUpdates[key] || latestUpdates[key].timestamp < timestamp) {
+      latestUpdates[key] = e;
+    }
+  }
+
+  return Object.values(latestUpdates);
+}
+
 function merge(setA, setB) {
   // Create the result set, consisting of all elements in setA
   const result = [...setA];
@@ -19,23 +34,15 @@ function merge(setA, setB) {
     }
   }
 
-  return result;
+  return compress(result);
 }
 
 function asObject(set) {
-  const result = {
-    __meta__: {
-      latestUpdates: {},
-    },
-  };
+  const compressed = compress(set);
+  const result = {};
 
-  for (const { key, value, timestamp } of set) {
-    const latest = result.__meta__.latestUpdates[key];
-
-    if (!latest || latest < timestamp) {
-      result[key] = value;
-      result.__meta__.latestUpdates[key] = timestamp;
-    }
+  for (const { key, value } of compressed) {
+    result[key] = value;
   }
 
   return result;
