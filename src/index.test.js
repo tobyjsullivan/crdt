@@ -1,35 +1,71 @@
 const { asObject, merge } = require(".");
 
 const updateId1 = {
+  nodeId: "root",
   key: "id",
-  value: "c87c0491-5559-44b6-bf63-00a575e338ec",
   timestamp: 1,
+  value: {
+    type: "VALUE",
+    value: "c87c0491-5559-44b6-bf63-00a575e338ec",
+  },
 };
 
 const updateTitle2 = {
+  nodeId: "root",
   key: "title",
-  value: "Example Domain",
   timestamp: 2,
+  value: {
+    type: "VALUE",
+    value: "Example Domain",
+  },
 };
 
 const updateUrl3 = {
+  nodeId: "root",
   key: "url",
-  value: "https://example.com/",
   timestamp: 3,
+  value: {
+    type: "VALUE",
+    value: "https://example.com/",
+  },
 };
 
 const updateTitle4 = {
+  nodeId: "root",
   key: "title",
-  value: "A new title",
   timestamp: 4,
+  value: {
+    type: "VALUE",
+    value: "A new title",
+  },
+};
+
+const updateStyleForeground5 = {
+  nodeId: "81572135-fbf5-4662-9a8a-8971272cc436",
+  key: "foreground",
+  timestamp: 5,
+  value: {
+    type: "VALUE",
+    value: "#ffffff",
+  },
+};
+
+const updateStyle6 = {
+  nodeId: "root",
+  key: "style",
+  timestamp: 6,
+  value: {
+    type: "NODE_REF",
+    nodeRef: "81572135-fbf5-4662-9a8a-8971272cc436",
+  },
 };
 
 describe(`merge(a, b)`, () => {
-  test(`produces a set containing all elements with unique keys`, () => {
-    const setA = [updateId1, updateTitle2];
-    const setB = [updateUrl3];
+  test(`produces a document containing all updates with unique node-key pairs`, () => {
+    const documentA = [updateId1, updateTitle2];
+    const documentB = [updateUrl3];
 
-    const result = merge(setA, setB);
+    const result = merge(documentA, documentB);
 
     expect(result.length).toBe(3);
 
@@ -40,10 +76,10 @@ describe(`merge(a, b)`, () => {
   });
 
   test(`removes duplicates`, () => {
-    const setA = [updateId1, updateTitle2];
-    const setB = [updateUrl3, updateTitle2];
+    const documentA = [updateId1, updateTitle2];
+    const documentB = [updateUrl3, updateTitle2];
 
-    const result = merge(setA, setB);
+    const result = merge(documentA, documentB);
 
     expect(result.length).toBe(3);
 
@@ -54,10 +90,10 @@ describe(`merge(a, b)`, () => {
   });
 
   test(`prunes outdated changes`, () => {
-    const setA = [updateId1, updateTitle2];
-    const setB = [updateUrl3, updateTitle4];
+    const documentA = [updateId1, updateTitle2];
+    const documentB = [updateUrl3, updateTitle4];
 
-    const result = merge(setA, setB);
+    const result = merge(documentA, documentB);
 
     expect(result.length).toBe(3);
 
@@ -69,15 +105,23 @@ describe(`merge(a, b)`, () => {
 
   test(`consistently resolves competing updates`, () => {
     const changeA = {
+      nodeId: "root",
       key: "title",
-      value: "New Proper Title",
       timestamp: 5,
+      value: {
+        type: "VALUE",
+        value: "New Proper Title",
+      },
     };
 
     const changeB = {
+      nodeId: "root",
       key: "title",
-      value: "Competing title change",
       timestamp: 5,
+      value: {
+        type: "VALUE",
+        value: "Competing title change",
+      },
     };
 
     // Apply the changes in different orders
@@ -85,25 +129,33 @@ describe(`merge(a, b)`, () => {
     const resultB = merge([updateId1, changeB], [changeA]);
 
     // Find all matching updates
-    const resultASelected = resultA.filter((e) => e.key === "title");
-    const resultBSelected = resultB.filter((e) => e.key === "title");
+    const resultATitleUpdate = resultA.filter((e) => e.key === "title");
+    const resultBTitleUpdate = resultB.filter((e) => e.key === "title");
 
-    expect(resultASelected.length).toBe(1);
-    expect(resultBSelected.length).toBe(1);
-    expect(resultASelected[0].value).toBe(resultBSelected[0].value);
+    expect(resultATitleUpdate.length).toBe(1);
+    expect(resultBTitleUpdate.length).toBe(1);
+    expect(resultATitleUpdate[0].value).toBe(resultBTitleUpdate[0].value);
   });
 
   test(`delete wins for simultaneous updates`, () => {
     const changeA = {
+      nodeId: "root",
       key: "title",
-      value: "New Proper Title",
       timestamp: 5,
+      value: {
+        type: "VALUE",
+        value: "New Proper Title",
+      },
     };
 
     const changeB = {
+      nodeId: "root",
       key: "title",
-      value: undefined,
       timestamp: 5,
+      value: {
+        type: "VALUE",
+        value: undefined,
+      },
     };
 
     // Apply the changes in different orders
@@ -114,16 +166,23 @@ describe(`merge(a, b)`, () => {
     const selectedA = resultA.find((e) => e.key === "title");
     const selectedB = resultB.find((e) => e.key === "title");
 
-    expect(selectedA.value).toBe(undefined);
-    expect(selectedB.value).toBe(undefined);
+    expect(selectedA.value.type).toBe("VALUE");
+    expect(selectedA.value.value).toBe(undefined);
+    expect(selectedB.value.type).toBe("VALUE");
+    expect(selectedB.value.value).toBe(undefined);
   });
 });
 
-describe(`asObject(s)`, () => {
-  test(`produces the expected object from a set`, () => {
-    const input = [updateId1, updateTitle2, updateUrl3];
+describe(`asObject(document)`, () => {
+  test(`returns an empty object for an empty document`, () => {
+    const result = asObject([]);
+    expect(result).toEqual({});
+  });
 
-    const result = asObject(input);
+  test(`produces the expected object from a document`, () => {
+    const document = [updateId1, updateTitle2, updateUrl3];
+
+    const result = asObject(document);
 
     expect(result.id).toBe("c87c0491-5559-44b6-bf63-00a575e338ec");
     expect(result.title).toBe("Example Domain");
@@ -131,12 +190,28 @@ describe(`asObject(s)`, () => {
   });
 
   test(`uses the most recent values`, () => {
-    const input = [updateId1, updateTitle2, updateUrl3, updateTitle4];
+    const document = [updateId1, updateTitle2, updateUrl3, updateTitle4];
 
-    const result = asObject(input);
+    const result = asObject(document);
 
     expect(result.id).toBe("c87c0491-5559-44b6-bf63-00a575e338ec");
     expect(result.title).toBe("A new title");
     expect(result.url).toBe("https://example.com/");
+  });
+
+  test(`allows nesting objects with references`, () => {
+    const document = [
+      updateId1,
+      updateTitle2,
+      updateStyleForeground5,
+      updateStyle6,
+    ];
+
+    const result = asObject(document);
+
+    expect(result.id).toBe("c87c0491-5559-44b6-bf63-00a575e338ec");
+    expect(result.title).toBe("Example Domain");
+    expect(result.style).toBeDefined();
+    expect(result.style.foreground).toBe("#ffffff");
   });
 });
