@@ -1,6 +1,6 @@
 /**
  * An authority persists one or more documents and acts as a source-of-truth (note: NOT a _single_ source-of-truth). This is a stark
- * departure from "real" CRDTs which enables certain pragmatic design choices.
+ * departure from "real" CRDTs which would normally be decentralized. The use of central authorities enables certain pragmatic design choices.
  *
  * An authority accepts any number of incoming input streams. Updates are applied in no particular order.
  *
