@@ -6,6 +6,8 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
+    "start-server": "PORT=3000 node src/authority.js",
+    "start-client": "SERVER_HOST='ws://localhost:3000' node src/client.js",
     "format": "yarn prettier --write ./**",
     "test": "yarn jest"
   },
@@ -14,6 +16,8 @@
     "prettier": "^2.6.2"
   },
   "dependencies": {
-    "socket.io": "4.5.0"
+    "socket.io": "4.5.0",
+    "socket.io-client": "4.5.0",
+    "uuid": "8.3.2"
   }
 }

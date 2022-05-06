@@ -75,9 +75,45 @@
  * limitted to only very high volume use cases.
  */
 const { Server } = require("socket.io");
+const { getTime, updateTime } = require("./clock");
+const { merge } = require("./crdt");
 
-const INBOUND_PORT = process.env.PORT ? parseInt(process.env.PORT) : "3000";
+const EVENT_SYNC_CLOCK = "sync-clock";
+const EVENT_UPDATE = "update";
+const EVENT_REQUEST_DOCUMENT = "request-document";
+const EVENT_DOCUMENT = "document";
+
+const INBOUND_PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 const inboundIo = new Server(INBOUND_PORT);
 
-inboundIo.on("connection", (socket) => {});
+// TODO: Persist somewhere durable
+const documents = {};
+
+inboundIo.on("connection", (socket) => {
+  socket.emit(EVENT_SYNC_CLOCK, getTime());
+
+  socket.on(EVENT_UPDATE, (documentId, update, callback) => {
+    // Update the clock based on the update timestamp
+    updateTime(update.timestamp);
+
+    // TODO: Write the update to a queue and acknowledge immediately. Document updates can be asyncronous.
+    let document = [update];
+    if (documents[documentId]) {
+      document = merge(documents[documentId], document);
+    }
+    documents[documentId] = document;
+
+    // Acknowledge receipt
+    callback({ success: true });
+
+    console.log(`Updated document (${documentId}): `, document);
+  });
+
+  socket.on(EVENT_REQUEST_DOCUMENT, (documentId) => {
+    const document = documents[documentId];
+    socket.emit(EVENT_DOCUMENT, documentId, document);
+  });
+});
+
+console.log(`Current time: ${getTime()}`);
