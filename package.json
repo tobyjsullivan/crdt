@@ -12,5 +12,8 @@
   "devDependencies": {
     "jest": "^28.0.3",
     "prettier": "^2.6.2"
+  },
+  "dependencies": {
+    "socket.io": "4.5.0"
   }
 }
