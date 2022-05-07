@@ -55,11 +55,44 @@ function compare(valueA, valueB) {
   }
 }
 
+function checkUpdate(update) {
+  // TODO: Disable this check unless running in debug mode
+  const { nodeId, key, timestamp, value } = update;
+  if (!nodeId) {
+    console.error(`Update is missing nodeId: `, update);
+  }
+  if (!key) {
+    console.error(`Update is missing key: `, update);
+  }
+
+  if (!timestamp) {
+    console.error(`Update is missing timestamp: `, update);
+  }
+
+  if (!value) {
+    console.error(`Update is missing value: `, update);
+  } else {
+    const { type, value: valueObj, nodeRef } = value;
+
+    if (type === VALUE_TYPE_VALUE) {
+      // Nothing else required here
+    } else if (type === VALUE_TYPE_NODE_REF) {
+      if (!nodeRef) {
+        console.error(`Update is missing value.nodeRef: `, update);
+      }
+    } else {
+      console.error(`Update has invalid value.type: `, update);
+    }
+  }
+}
+
 // Reduces the set to only include latest updates
 function compress(document) {
   const latestUpdatesByNode = {};
 
   for (const currentUpdate of document) {
+    checkUpdate(currentUpdate);
+
     const { nodeId, key, timestamp } = currentUpdate;
 
     if (!latestUpdatesByNode[nodeId]) {
@@ -88,6 +121,43 @@ function compress(document) {
 
 function merge(documentA, documentB) {
   return compress([...documentA, ...documentB]);
+}
+
+function getNodeId(document, keyPath) {
+  if (keyPath.length === 0) {
+    return ROOT_NODE_ID;
+  }
+
+  const compressed = compress(document);
+  const nodeIdMap = {
+    [ROOT_NODE_ID]: {},
+  };
+
+  for (const {
+    nodeId,
+    key,
+    type,
+    value: { nodeRef },
+  } of compressed) {
+    if (!nodeIdMap[nodeId]) {
+      nodeIdMap[nodeId] = {};
+    }
+
+    if (type === VALUE_TYPE_NODE_REF) {
+      nodeIdMap[nodeId][key] = nodeRef;
+    }
+  }
+
+  let nodeId = ROOT_NODE_ID;
+  for (const key of keyPath) {
+    nodeId = nodeIdMap[nodeId][key];
+
+    if (nodeId === undefined) {
+      return undefined;
+    }
+  }
+
+  return nodeId;
 }
 
 function asObject(document) {
@@ -125,5 +195,6 @@ function asObject(document) {
 
 module.exports = {
   merge,
+  getNodeId,
   asObject,
 };

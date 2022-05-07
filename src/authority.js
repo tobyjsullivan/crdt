@@ -75,11 +75,13 @@
  * limitted to only very high volume use cases.
  */
 const { Server } = require("socket.io");
+const fastq = require("fastq");
 const { getTime, updateTime } = require("./clock");
 const { merge } = require("./crdt");
 
 const EVENT_SYNC_CLOCK = "sync-clock";
-const EVENT_UPDATE = "update";
+const EVENT_POST_UPDATES = "post-updates";
+const EVENT_BROADCAST_UPDATE = "broadcast-update";
 const EVENT_REQUEST_DOCUMENT = "request-document";
 const EVENT_DOCUMENT = "document";
 
@@ -90,29 +92,38 @@ const inboundIo = new Server(INBOUND_PORT);
 // TODO: Persist somewhere durable
 const documents = {};
 
+function handleUpdate({ documentId, update }, cb) {
+  let document = [update];
+  if (documents[documentId]) {
+    document = merge(documents[documentId], document);
+  }
+  documents[documentId] = document;
+  cb();
+  console.log(`Updated document (${documentId}): `, document);
+}
+
+// Updates are applied on a single worker because this particular worker is not thread-safe
+const updateQueue = fastq(handleUpdate, 1);
+
 inboundIo.on("connection", (socket) => {
   socket.emit(EVENT_SYNC_CLOCK, getTime());
 
-  socket.on(EVENT_UPDATE, (documentId, update, callback) => {
+  socket.on(EVENT_POST_UPDATES, (documentId, updates, callback) => {
     // Update the clock based on the update timestamp
-    updateTime(update.timestamp);
+    updates.forEach((update) => updateTime(update.timestamp));
 
     // TODO: Write the update to a queue and acknowledge immediately. Document updates can be asyncronous.
-    let document = [update];
-    if (documents[documentId]) {
-      document = merge(documents[documentId], document);
+    for (const update of updates) {
+      updateQueue.push({ documentId, update });
     }
-    documents[documentId] = document;
 
     // Acknowledge receipt
     callback({ success: true });
-
-    console.log(`Updated document (${documentId}): `, document);
   });
 
   socket.on(EVENT_REQUEST_DOCUMENT, (documentId) => {
     const document = documents[documentId];
-    socket.emit(EVENT_DOCUMENT, documentId, document);
+    socket.emit(EVENT_DOCUMENT, documentId, document, getTime());
   });
 });
 
