@@ -44,14 +44,27 @@ class DocumentContainer {
 
     this.eventListeners = {};
 
-    socket.on(EVENT_DOCUMENT, this.handleReceiveDocument);
+    socket.on(EVENT_DOCUMENT, this.handleReceiveDocument.bind(this));
+    socket.on(EVENT_BROADCAST_UPDATE, this.handleReceiveUpdate.bind(this));
 
     // Get any existing document from the server
     socket.emit(EVENT_REQUEST_DOCUMENT, documentId);
   }
 
   close() {
-    socket.off(EVENT_DOCUMENT, this.handleReceiveDocument);
+    socket.off(EVENT_DOCUMENT, this.handleReceiveDocument.bind(this));
+  }
+
+  handleReceiveUpdate(eventDocumentId, update, timestamp) {
+    updateTime(timestamp);
+
+    if (eventDocumentId !== this.documentId) {
+      return;
+    }
+
+    this.document = merge(this.document, [update]);
+
+    this.fireEvent("update", update);
   }
 
   handleReceiveDocument(eventDocumentId, document, timestamp) {
@@ -123,7 +136,9 @@ class DocumentContainer {
       return;
     }
 
-    this.eventListeners[eventName].filter((current) => current !== listener);
+    this.eventListeners[eventName] = this.eventListeners[eventName].filter(
+      (current) => current !== listener
+    );
   }
 }
 
@@ -221,7 +236,7 @@ function closeDocument(document) {
   }
 }
 
-// Example B
+// Example
 const documentId = "39a2ad4b-c3a3-4a6b-b44c-9f96280aa06b";
 const object = openDocument(documentId);
 
@@ -247,35 +262,9 @@ object.address.streetAddress = "5555 Main Street";
 
 console.log(`object.address:`, object.address);
 
-closeDocument(object);
-
-// // Example A
-// const documentId = "39a2ad4b-c3a3-4a6b-b44c-9f96280aa06b";
-// const myKeyId = uuidV4(); // Each process gets a unique key to update
-// function runExample() {
-//   const update = {
-//     nodeId: "root",
-//     key: myKeyId,
-//     timestamp: getTime(),
-//     value: {
-//       type: VALUE_TYPE_VALUE,
-//       value: uuidV4(),
-//     },
-//   };
-
-//   socket.emit(EVENT_POST_UPDATES, documentId, [update], ({ success }) => {
-//     if (!success) {
-//       throw new Error(`Unknown error.`);
-//     }
-
-//     // console.log(`Update acknowledged: `, update);
-
-//     socket.emit(EVENT_REQUEST_DOCUMENT, documentId);
-//   });
-// }
-
-// for (let i = 1; i <= 6; i++) {
-//   runExample();
-// }
+object.counter = 0;
+for (let i = 1; i <= 60; i++) {
+  setTimeout(() => console.log(`counter: `, object.counter++), i * 1000);
+}
 
 console.log(`Done test!`);

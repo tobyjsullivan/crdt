@@ -92,14 +92,36 @@ const inboundIo = new Server(INBOUND_PORT);
 // TODO: Persist somewhere durable
 const documents = {};
 
+function addSubscriber(documentId, socket) {
+  socket.join(`document/${documentId}`);
+}
+
+function handleBroadcast({ documentId, update }, cb) {
+  inboundIo
+    .to(`document/${documentId}`)
+    .emit(EVENT_BROADCAST_UPDATE, documentId, update, getTime());
+
+  cb();
+}
+
+const broadcastQueue = fastq(handleBroadcast, 5);
+
 function handleUpdate({ documentId, update }, cb) {
   let document = [update];
   if (documents[documentId]) {
     document = merge(documents[documentId], document);
   }
   documents[documentId] = document;
+
+  broadcastQueue.push({ documentId, update });
+
+  console.log(
+    `Updated document (${documentId}): ${update.key}=${JSON.stringify(
+      update.value
+    )}`
+  );
+
   cb();
-  console.log(`Updated document (${documentId}): `, document);
 }
 
 // Updates are applied on a single worker because this particular worker is not thread-safe
@@ -122,8 +144,12 @@ inboundIo.on("connection", (socket) => {
   });
 
   socket.on(EVENT_REQUEST_DOCUMENT, (documentId) => {
+    addSubscriber(documentId, socket);
+
     const document = documents[documentId];
-    socket.emit(EVENT_DOCUMENT, documentId, document, getTime());
+    if (document) {
+      socket.emit(EVENT_DOCUMENT, documentId, document, getTime());
+    }
   });
 });
 
