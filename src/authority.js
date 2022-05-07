@@ -17,8 +17,8 @@
  * resources such as logs, cursors, or workers, across multiple documents as an optimization.
  *
  * The primary datastore for the authority is some (non-specified) form of ACID storage. This likely runs on a different server.
- * Request Log: A local, append-only journal logs all received updates which will eventually be applied to the database.
- * Request Cursor: A cursor tracks which journal entries have been applied to the database
+ * Write-Ahead Log: A local, append-only journal logs all received updates which will eventually be applied to the database.
+ * Write-Ahead Cursor: A cursor tracks which journal entries have been applied to the database
  * Broadcast Log: A local, append-only journal logs all updates which mutated a document state on this authority. (does not include stale or no-op updates)
  * Broadcast Cursor: An output cursor tracks which updates have been published on the output stream.
  *
@@ -35,19 +35,19 @@
  *    Batches should be written atomically to simplify client retry semantics. Acceptable batch sizes can be limitted to offer quality of service guarantees.
  *
  * Writes to the primary store are performed by a single-threaded worker:
- * 1. Check if the Request Cursor is behind the tail cursor; if so:
- * 2. Transactionally apply the next request to the primary datastore. This involves reading the current property value and updating if necessary. (Idempotent)
+ * 1. Check if the Write-Ahead Cursor is behind the tail cursor; if so:
+ * 2. Transactionally apply the next update to the primary datastore. This involves reading the current property value and updating if necessary. (Idempotent)
  * 3. If a property changed, append the update to the Broadcast log. (Idempotent)
  *    - TODO: The DB transaction and the write to the broadcast log are not atomic. That means it's possible to mutate data without broadcasting. For example,
  *         the system can crash after the transaction commits and before the Breadcast Log is updated. When the update is retried after boot, there will be no
  *         detected change in the DB and so no update will be written to the Broadcast Log.
  *         Is the correct fix to write to the Broadcast Log before committing the transaction? There seems to be no obvious cost of a false positive on the broadcast
- *         log if the change has already been committed to the Request Log.
- * 4. Update the Request Cursor to this update ID.
+ *         log if the change has already been committed to the Write-Ahead Log.
+ * 4. Update the Write-Ahead Cursor to this update ID.
  * 5. Return to Step 1.
  *
  * Updates broadcasts are performed by a similar worker:
- * 1. Check if the Broadcast Cursor is behind the Request Cursor; if so:
+ * 1. Check if the Broadcast Cursor is behind the Write-Ahead Cursor; if so:
  * 2. Publish the intermediate update(s) to the output stream (these can be published in batches).
  * 3. Update the Broadcast Cursor.
  * 4. Return to Step 1.
