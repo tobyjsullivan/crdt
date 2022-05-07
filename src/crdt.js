@@ -136,8 +136,7 @@ function getNodeId(document, keyPath) {
   for (const {
     nodeId,
     key,
-    type,
-    value: { nodeRef },
+    value: { type, nodeRef },
   } of compressed) {
     if (!nodeIdMap[nodeId]) {
       nodeIdMap[nodeId] = {};

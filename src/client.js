@@ -42,6 +42,8 @@ class DocumentContainer {
     this.documentId = documentId;
     this.document = [];
 
+    this.eventListeners = {};
+
     socket.on(EVENT_DOCUMENT, this.handleReceiveDocument);
 
     // Get any existing document from the server
@@ -55,8 +57,22 @@ class DocumentContainer {
   handleReceiveDocument(eventDocumentId, document, timestamp) {
     updateTime(timestamp);
 
-    if (eventDocumentId === this.documentId) {
-      this.document = merge(this.document, document);
+    if (eventDocumentId !== this.documentId) {
+      return;
+    }
+
+    this.document = merge(this.document, document);
+
+    for (const update of document) {
+      this.fireEvent("update", update);
+    }
+  }
+
+  fireEvent(eventName, ...args) {
+    for (const listener of this.eventListeners[eventName]) {
+      if (typeof listener === "function") {
+        listener(...args);
+      }
     }
   }
 
@@ -69,6 +85,10 @@ class DocumentContainer {
         throw new Error(`Unknown error.`);
       }
     });
+
+    for (const update of updates) {
+      this.fireEvent("update", update);
+    }
   }
 
   // An empty keyPath will return the root object.
@@ -84,6 +104,26 @@ class DocumentContainer {
     }
 
     return obj;
+  }
+
+  asObject() {
+    return asObject(this.document);
+  }
+
+  on(eventName, listener) {
+    if (!this.eventListeners[eventName]) {
+      this.eventListeners[eventName] = [];
+    }
+
+    this.eventListeners[eventName].push(listener);
+  }
+
+  off(eventName, listener) {
+    if (!this.eventListeners[eventName]) {
+      return;
+    }
+
+    this.eventListeners[eventName].filter((current) => current !== listener);
   }
 }
 
@@ -121,44 +161,50 @@ function createUpdates(nodeId, key, value) {
 }
 
 function createProxy(container, parentPath = []) {
-  return new Proxy(
-    {},
-    {
-      get: function (target, name, receiver) {
-        // Special-purpose accessor used for managing the container lifecycle
-        if (name === "__container") {
-          return container;
-        }
+  const nodeId = getNodeId(container.document, [...parentPath]);
+  if (nodeId === undefined) {
+    // The parent member does not exist. This shouldn't happen except maybe in a race condition.
+    // TODO: Handle the case where the parent object is deleted at the same time as the access. Maybe just ignore this case?
+    throw new Error(
+      `Cannot operate on non-existent node. ${parentPath.join(".")}`
+    );
+  }
 
-        const keyPath = [...parentPath, name];
-
-        const value = container.getValue(keyPath);
-
-        // This assumes it's never possible for a document node to have an object as a value.
-        // This seems reasonable and consistent with the rest of the design.
-        if (typeof value === "object") {
-          return createProxy(container, keyPath);
-        }
-
-        return value;
-      },
-      set: function (target, name, value, receiver) {
-        const targetNodeId = getNodeId(this.document, [...parentPath]);
-        if (targetNodeId === undefined) {
-          // The parent member does not exist. This shouldn't happen except maybe in a race condition.
-          // TODO: Handle the case where the parent object is deleted at the same time as the access. Maybe just ignore this case?
-          throw new Error(
-            `Cannot set property on non-existent node. `,
-            parentPath
-          );
-        }
-
-        const updates = createUpdates(targetNodeId, name, value);
-
-        container.applyUpdates(updates);
-      },
+  // Keep the target in sync so that things like console.log can print this object correctly
+  const target = Object.assign({}, container.getValue(parentPath));
+  container.on("update", ({ nodeId: updateNodeId }) => {
+    if (updateNodeId !== nodeId) {
+      return;
     }
-  );
+
+    Object.assign(target, container.getValue(parentPath));
+  });
+
+  return new Proxy(target, {
+    get: function (target, name, receiver) {
+      // Special-purpose accessor used for managing the container lifecycle
+      if (name === "__container") {
+        return container;
+      }
+
+      const keyPath = [...parentPath, name];
+
+      const value = container.getValue(keyPath);
+
+      // This assumes it's never possible for a document node to have an object as a value.
+      // This seems reasonable and consistent with the rest of the design.
+      if (typeof value === "object") {
+        return createProxy(container, keyPath);
+      }
+
+      return value;
+    },
+    set: function (target, name, value, receiver) {
+      const updates = createUpdates(nodeId, name, value);
+
+      container.applyUpdates(updates);
+    },
+  });
 }
 
 function openDocument(documentId) {
@@ -195,6 +241,10 @@ console.log(`object:`, object);
 console.log(`object.id:`, object.id);
 console.log(`object.name:`, object.name);
 console.log(`object.age:`, object.age);
+console.log(`object.address:`, object.address);
+
+object.address.streetAddress = "5555 Main Street";
+
 console.log(`object.address:`, object.address);
 
 closeDocument(object);
