@@ -148,6 +148,18 @@ function createUpdates(nodeId, key, value) {
   if (typeof value === "object") {
     // TODO: Test for cycles to prevent infinite loops
     const newNodeId = uuidV4();
+    if (Array.isArray(value)) {
+      updates.push({
+        nodeId: newNodeId,
+        key: "__isArray",
+        timestamp: getTime(),
+        value: {
+          type: VALUE_TYPE_VALUE,
+          value: true,
+        },
+      });
+    }
+
     for (const key in value) {
       const nested = createUpdates(newNodeId, key, value[key]);
 
@@ -186,7 +198,10 @@ function createProxy(container, parentPath = []) {
   }
 
   // Keep the target in sync so that things like console.log can print this object correctly
-  const target = Object.assign({}, container.getValue(parentPath));
+  const obj = container.getValue(parentPath);
+  const target = obj.__isArray ? [] : {};
+  Object.assign(target, obj);
+  delete target.__isArray;
   container.on("update", ({ nodeId: updateNodeId }) => {
     if (updateNodeId !== nodeId) {
       return;
@@ -200,6 +215,18 @@ function createProxy(container, parentPath = []) {
       // Special-purpose accessor used for managing the container lifecycle
       if (name === "__container") {
         return container;
+      }
+
+      // Special handler for lists
+      const parentVal = container.getValue(parentPath);
+      if (parentVal.__isArray) {
+        const l = Object.assign([], parentVal);
+        delete l.__isArray;
+        if (name === "length") {
+          return l.length;
+        } else if (name === Symbol.iterator) {
+          return l[Symbol.iterator];
+        }
       }
 
       const keyPath = [...parentPath, name];
@@ -262,9 +289,20 @@ object.address.streetAddress = "5555 Main Street";
 
 console.log(`object.address:`, object.address);
 
-object.counter = 0;
-for (let i = 1; i <= 60; i++) {
-  setTimeout(() => console.log(`counter: `, object.counter++), i * 1000);
+object.list = ["hello", "world"];
+console.log(`object.list:`, object.list);
+console.log(`object.list.length:`, object.list.length);
+
+const copy = [...object.list];
+console.log(`copy:`, copy);
+
+for (const i in object.list) {
+  console.log(`object.list[${i}]:`, object.list[i]);
 }
+
+// object.counter = 0;
+// for (let i = 1; i <= 60; i++) {
+//   setTimeout(() => console.log(`counter: `, object.counter++), i * 1000);
+// }
 
 console.log(`Done test!`);
