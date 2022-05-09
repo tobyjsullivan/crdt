@@ -4,7 +4,7 @@ const VALUE_TYPE_NODE_REF = "NODE_REF";
 const ROOT_NODE_ID = "root";
 
 // Produces an empty document
-function empty() {
+function emptyDocument() {
   return [];
 }
 
@@ -192,7 +192,7 @@ function asObject(document) {
 }
 
 module.exports = {
-  empty,
+  emptyDocument,
   merge,
   getNodeId,
   getNodeKeys,

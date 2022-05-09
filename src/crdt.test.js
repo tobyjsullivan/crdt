@@ -1,4 +1,4 @@
-const { asObject, merge, empty, getNodeKeys } = require("./crdt");
+const { asObject, merge, emptyDocument, getNodeKeys } = require("./crdt");
 
 const updateId1 = {
   nodeId: "root",
@@ -60,9 +60,9 @@ const updateStyle6 = {
   },
 };
 
-describe(`empty()`, () => {
+describe(`emptyDocument()`, () => {
   test(`produces a document with no updates`, () => {
-    const result = empty();
+    const result = emptyDocument();
 
     expect(result.length).toBe(0);
   });

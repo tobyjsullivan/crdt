@@ -1,4 +1,4 @@
-const { empty, getNodeKeys } = require("./crdt");
+const { emptyDocument, getNodeKeys } = require("./crdt");
 
 class Document {
   constructor(state) {
@@ -11,7 +11,7 @@ class Document {
 }
 
 function createDocument() {
-  const state = empty();
+  const state = emptyDocument();
 
   return new Document(state);
 }
