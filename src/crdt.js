@@ -1,17 +1,28 @@
-const VALUE_TYPE_VALUE = "VALUE";
+const VALUE_TYPE_ATOM = "ATOM";
 const VALUE_TYPE_NODE_REF = "NODE_REF";
 
-const ROOT_NODE_ID = "root";
+const NODE_ID_ROOT = "root";
+
+function atomValue(value) {
+  return {
+    type: VALUE_TYPE_ATOM,
+    value,
+  };
+}
+
+function nodeRefValue(nodeId) {
+  return {
+    type: VALUE_TYPE_NODE_REF,
+    nodeRef: nodeId,
+  };
+}
 
 function updateValue(nodeId, key, value, timestamp) {
   return {
     nodeId,
     key,
     timestamp,
-    value: {
-      type: VALUE_TYPE_VALUE,
-      value,
-    },
+    value: atomValue(value),
   };
 }
 
@@ -20,10 +31,7 @@ function updateNodeRef(nodeId, key, nodeRef, timestamp) {
     nodeId,
     key,
     timestamp,
-    value: {
-      type: VALUE_TYPE_NODE_REF,
-      nodeRef,
-    },
+    value: nodeRefValue(nodeRef),
   };
 }
 
@@ -44,23 +52,23 @@ function compare(valueA, valueB) {
 
   // Give precedence to value deletions
   if (
-    valueA.type === VALUE_TYPE_VALUE &&
+    valueA.type === VALUE_TYPE_ATOM &&
     [undefined, null].includes(valueA.value)
   ) {
     return 1;
   }
   if (
-    valueB.type === VALUE_TYPE_VALUE &&
+    valueB.type === VALUE_TYPE_ATOM &&
     [undefined, null].includes(valueB.value)
   ) {
     return -1;
   }
 
   // Favour node refs. There's no particular reason for this preference.
-  if (valueA.type === VALUE_TYPE_NODE_REF && valueB.type === VALUE_TYPE_VALUE) {
+  if (valueA.type === VALUE_TYPE_NODE_REF && valueB.type === VALUE_TYPE_ATOM) {
     return 1;
   }
-  if (valueB.type === VALUE_TYPE_NODE_REF && valueA.type === VALUE_TYPE_VALUE) {
+  if (valueB.type === VALUE_TYPE_NODE_REF && valueA.type === VALUE_TYPE_ATOM) {
     return -1;
   }
 
@@ -121,7 +129,7 @@ function merge(documentA, documentB) {
 
 function buildNodeIdMap(document) {
   const nodeIdMap = {
-    [ROOT_NODE_ID]: {},
+    [NODE_ID_ROOT]: {},
   };
 
   for (const {
@@ -143,13 +151,13 @@ function buildNodeIdMap(document) {
 
 function getNodeId(document, keyPath) {
   if (keyPath.length === 0) {
-    return ROOT_NODE_ID;
+    return NODE_ID_ROOT;
   }
 
   const compressed = compress(document);
   const nodeIdMap = buildNodeIdMap(compressed);
 
-  let nodeId = ROOT_NODE_ID;
+  let nodeId = NODE_ID_ROOT;
   for (const key of keyPath) {
     nodeId = nodeIdMap[nodeId][key];
 
@@ -159,6 +167,18 @@ function getNodeId(document, keyPath) {
   }
 
   return nodeId;
+}
+
+function getValue(document, nodeId, key) {
+  const compressed = compress(document);
+
+  for (const { nodeId: currentNodeId, key: currentKey, value } of compressed) {
+    if (currentNodeId === nodeId && currentKey === key) {
+      return value;
+    }
+  }
+
+  return undefined;
 }
 
 function getNodeKeys(document, keyPath) {
@@ -194,7 +214,7 @@ function asObject(document) {
     const node = nodes[nodeId] || {};
 
     switch (type) {
-      case VALUE_TYPE_VALUE: {
+      case VALUE_TYPE_ATOM: {
         node[key] = value;
         break;
       }
@@ -212,14 +232,18 @@ function asObject(document) {
     nodes[nodeId] = node;
   }
 
-  return nodes[ROOT_NODE_ID] || {};
+  return nodes[NODE_ID_ROOT] || {};
 }
 
 module.exports = {
+  VALUE_TYPE_ATOM,
+  VALUE_TYPE_NODE_REF,
+  NODE_ID_ROOT,
   emptyDocument,
   merge,
   getNodeId,
   getNodeKeys,
+  getValue,
   asObject,
   updateValue,
   updateNodeRef,

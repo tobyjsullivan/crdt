@@ -5,20 +5,23 @@ const {
   getNodeKeys,
   updateValue,
   updateNodeRef,
+  NODE_ID_ROOT,
+  VALUE_TYPE_ATOM,
+  getValue,
 } = require("./crdt");
 
 const updateId1 = updateValue(
-  "root",
+  NODE_ID_ROOT,
   "id",
   "c87c0491-5559-44b6-bf63-00a575e338ec",
   1
 );
 
-const updateTitle2 = updateValue("root", "title", "Example Domain", 2);
+const updateTitle2 = updateValue(NODE_ID_ROOT, "title", "Example Domain", 2);
 
-const updateUrl3 = updateValue("root", "url", "https://example.com/", 3);
+const updateUrl3 = updateValue(NODE_ID_ROOT, "url", "https://example.com/", 3);
 
-const updateTitle4 = updateValue("root", "title", "A new title", 4);
+const updateTitle4 = updateValue(NODE_ID_ROOT, "title", "A new title", 4);
 
 const updateStyleForeground5 = updateValue(
   "81572135-fbf5-4662-9a8a-8971272cc436",
@@ -28,7 +31,7 @@ const updateStyleForeground5 = updateValue(
 );
 
 const updateStyle6 = updateNodeRef(
-  "root",
+  NODE_ID_ROOT,
   "style",
   "81572135-fbf5-4662-9a8a-8971272cc436",
   6
@@ -86,8 +89,13 @@ describe(`merge(a, b)`, () => {
   });
 
   test(`consistently resolves competing updates`, () => {
-    const changeA = updateValue("root", "title", "One Title Change", 5);
-    const changeB = updateValue("root", "title", "Competing title change", 5);
+    const changeA = updateValue(NODE_ID_ROOT, "title", "One Title Change", 5);
+    const changeB = updateValue(
+      NODE_ID_ROOT,
+      "title",
+      "Competing title change",
+      5
+    );
 
     // Apply the changes in different orders
     const resultA = merge([updateId1, changeA], [changeB]);
@@ -103,8 +111,8 @@ describe(`merge(a, b)`, () => {
   });
 
   test(`delete wins for simultaneous updates`, () => {
-    const changeA = updateValue("root", "title", "Some New Title", 5);
-    const changeB = updateValue("root", "title", undefined, 5);
+    const changeA = updateValue(NODE_ID_ROOT, "title", "Some New Title", 5);
+    const changeB = updateValue(NODE_ID_ROOT, "title", undefined, 5);
 
     // Apply the changes in different orders
     const resultA = merge([updateId1, changeA], [changeB]);
@@ -114,9 +122,9 @@ describe(`merge(a, b)`, () => {
     const selectedA = resultA.find((e) => e.key === "title");
     const selectedB = resultB.find((e) => e.key === "title");
 
-    expect(selectedA.value.type).toBe("VALUE");
+    expect(selectedA.value.type).toBe(VALUE_TYPE_ATOM);
     expect(selectedA.value.value).toBe(undefined);
-    expect(selectedB.value.type).toBe("VALUE");
+    expect(selectedB.value.type).toBe(VALUE_TYPE_ATOM);
     expect(selectedB.value.value).toBe(undefined);
   });
 });
@@ -136,6 +144,24 @@ describe(`getNodeKeys(document)`, () => {
     expect(result.length).toBe(2);
     expect(result).toContain("id");
     expect(result).toContain("title");
+  });
+});
+
+describe(`getValue()`, () => {
+  test(`it returns undefined for a key on an empty document`, () => {
+    const result = getValue([], NODE_ID_ROOT, "id");
+
+    expect(result).toBeUndefined();
+  });
+
+  test(`it returns the correct atom value on a document with multiple keys`, () => {
+    const document = [updateId1, updateTitle2];
+
+    const result = getValue(document, NODE_ID_ROOT, "title");
+
+    expect(result).toBeDefined();
+    expect(result.type).toBe(VALUE_TYPE_ATOM);
+    expect(result.value).toBe("Example Domain");
   });
 });
 
