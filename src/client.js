@@ -255,6 +255,18 @@ function openDocument(documentId) {
   return createProxy(container);
 }
 
+function addUpdateListener(document, updateListener) {
+  const { __container: container } = document;
+
+  container.on("update", updateListener);
+}
+
+function removeUpdateListener(document, updateListener) {
+  const { __container: container } = document;
+
+  container.off("update", updateListener);
+}
+
 function closeDocument(document) {
   const { __container: container } = document;
 
@@ -304,5 +316,9 @@ for (const i in object.list) {
 // for (let i = 1; i <= 60; i++) {
 //   setTimeout(() => console.log(`counter: `, object.counter++), i * 1000);
 // }
+
+addUpdateListener(object, () => {
+  console.log(`Object changed!`);
+});
 
 console.log(`Done test!`);
