@@ -1,13 +1,11 @@
 const {
   asObject,
+  compress,
   merge,
-  emptyDocument,
-  getNodeKeys,
   updateValue,
   updateNodeRef,
   NODE_ID_ROOT,
   VALUE_TYPE_ATOM,
-  getValue,
 } = require("./crdt");
 
 const updateId1 = updateValue(
@@ -37,11 +35,18 @@ const updateStyle6 = updateNodeRef(
   6
 );
 
-describe(`emptyDocument()`, () => {
-  test(`produces a document with no updates`, () => {
-    const result = emptyDocument();
+describe(`compress(document)`, () => {
+  test(`prunes outdated changes`, () => {
+    const document = [updateId1, updateTitle2, updateUrl3, updateTitle4];
 
-    expect(result.length).toBe(0);
+    const result = compress(document);
+
+    expect(result.length).toBe(3);
+
+    // Check equality of fields, not object identity
+    expect(result).toContainEqual(updateId1);
+    expect(result).toContainEqual(updateUrl3);
+    expect(result).toContainEqual(updateTitle4);
   });
 });
 
@@ -126,42 +131,6 @@ describe(`merge(a, b)`, () => {
     expect(selectedA.value.value).toBe(undefined);
     expect(selectedB.value.type).toBe(VALUE_TYPE_ATOM);
     expect(selectedB.value.value).toBe(undefined);
-  });
-});
-
-describe(`getNodeKeys(document)`, () => {
-  test(`returns an empty list for an empty document`, () => {
-    const result = getNodeKeys([], []);
-
-    expect(result.length).toBe(0);
-  });
-
-  test(`returns all keys for a simple document`, () => {
-    const document = [updateId1, updateTitle2];
-
-    const result = getNodeKeys(document, []);
-
-    expect(result.length).toBe(2);
-    expect(result).toContain("id");
-    expect(result).toContain("title");
-  });
-});
-
-describe(`getValue()`, () => {
-  test(`it returns undefined for a key on an empty document`, () => {
-    const result = getValue([], NODE_ID_ROOT, "id");
-
-    expect(result).toBeUndefined();
-  });
-
-  test(`it returns the correct atom value on a document with multiple keys`, () => {
-    const document = [updateId1, updateTitle2];
-
-    const result = getValue(document, NODE_ID_ROOT, "title");
-
-    expect(result).toBeDefined();
-    expect(result.type).toBe(VALUE_TYPE_ATOM);
-    expect(result.value).toBe("Example Domain");
   });
 });
 
