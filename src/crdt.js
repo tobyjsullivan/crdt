@@ -3,6 +3,11 @@ const VALUE_TYPE_NODE_REF = "NODE_REF";
 
 const ROOT_NODE_ID = "root";
 
+// Produces an empty document
+function empty() {
+  return [];
+}
+
 // Comparison is used to break ties on simultaneous updates.
 // The exact rules are largely meaningless as long as they are consistent.
 // That said, some specific cases are favourable:
@@ -90,6 +95,69 @@ function merge(documentA, documentB) {
   return compress([...documentA, ...documentB]);
 }
 
+function buildNodeIdMap(document) {
+  const nodeIdMap = {
+    [ROOT_NODE_ID]: {},
+  };
+
+  for (const {
+    nodeId,
+    key,
+    value: { type, nodeRef },
+  } of compressed) {
+    if (!nodeIdMap[nodeId]) {
+      nodeIdMap[nodeId] = {};
+    }
+
+    if (type === VALUE_TYPE_NODE_REF) {
+      nodeIdMap[nodeId][key] = nodeRef;
+    }
+  }
+
+  return nodeIdMap;
+}
+
+function getNodeId(document, keyPath) {
+  if (keyPath.length === 0) {
+    return ROOT_NODE_ID;
+  }
+
+  const compressed = compress(document);
+  const nodeIdMap = buildNodeIdMap(compressed);
+
+  let nodeId = ROOT_NODE_ID;
+  for (const key of keyPath) {
+    nodeId = nodeIdMap[nodeId][key];
+
+    if (nodeId === undefined) {
+      return undefined;
+    }
+  }
+
+  return nodeId;
+}
+
+function getNodeKeys(document, keyPath) {
+  const compressed = compress(document);
+  const nodeId = getNodeId(compressed, keyPath);
+
+  const keys = {};
+  for (const update of compressed) {
+    if (update.nodeId !== nodeId) {
+      continue;
+    }
+
+    if (update.value === undefined) {
+      // Exclude deleted keys
+      continue;
+    }
+
+    keys[update.key] = update.value;
+  }
+
+  return Object.keys(keys);
+}
+
 function asObject(document) {
   const compressed = compress(document);
   const nodes = {};
@@ -124,6 +192,9 @@ function asObject(document) {
 }
 
 module.exports = {
+  empty,
   merge,
+  getNodeId,
+  getNodeKeys,
   asObject,
 };

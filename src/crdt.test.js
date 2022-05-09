@@ -1,4 +1,4 @@
-const { asObject, merge } = require("./crdt");
+const { asObject, merge, empty, getNodeKeys } = require("./crdt");
 
 const updateId1 = {
   nodeId: "root",
@@ -59,6 +59,14 @@ const updateStyle6 = {
     nodeRef: "81572135-fbf5-4662-9a8a-8971272cc436",
   },
 };
+
+describe(`empty()`, () => {
+  test(`produces a document with no updates`, () => {
+    const result = empty();
+
+    expect(result.length).toBe(0);
+  });
+});
 
 describe(`merge(a, b)`, () => {
   test(`produces a document containing all updates with unique node-key pairs`, () => {
@@ -170,6 +178,24 @@ describe(`merge(a, b)`, () => {
     expect(selectedA.value.value).toBe(undefined);
     expect(selectedB.value.type).toBe("VALUE");
     expect(selectedB.value.value).toBe(undefined);
+  });
+});
+
+describe(`getNodeKeys(document)`, () => {
+  test(`returns an empty list for an empty document`, () => {
+    const result = getNodeKeys([], []);
+
+    expect(result.length).toBe(0);
+  });
+
+  test(`returns all keys for a simple document`, () => {
+    const document = [updateId1, updateTitle2];
+
+    const result = getNodeKeys(document, []);
+
+    expect(result.length).toBe(2);
+    expect(result).toContain("id");
+    expect(result).toContain("title");
   });
 });
 

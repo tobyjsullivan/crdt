@@ -7,7 +7,7 @@
   "private": true,
   "scripts": {
     "format": "yarn prettier --write ./**",
-    "test": "yarn jest"
+    "test": "yarn jest --verbose"
   },
   "devDependencies": {
     "jest": "^28.0.3",
