@@ -3,6 +3,30 @@ const VALUE_TYPE_NODE_REF = "NODE_REF";
 
 const ROOT_NODE_ID = "root";
 
+function updateValue(nodeId, key, value, timestamp) {
+  return {
+    nodeId,
+    key,
+    timestamp,
+    value: {
+      type: VALUE_TYPE_VALUE,
+      value,
+    },
+  };
+}
+
+function updateNodeRef(nodeId, key, nodeRef, timestamp) {
+  return {
+    nodeId,
+    key,
+    timestamp,
+    value: {
+      type: VALUE_TYPE_NODE_REF,
+      nodeRef,
+    },
+  };
+}
+
 // Produces an empty document
 function emptyDocument() {
   return [];
@@ -197,4 +221,6 @@ module.exports = {
   getNodeId,
   getNodeKeys,
   asObject,
+  updateValue,
+  updateNodeRef,
 };

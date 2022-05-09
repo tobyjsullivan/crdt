@@ -1,64 +1,38 @@
-const { asObject, merge, emptyDocument, getNodeKeys } = require("./crdt");
+const {
+  asObject,
+  merge,
+  emptyDocument,
+  getNodeKeys,
+  updateValue,
+  updateNodeRef,
+} = require("./crdt");
 
-const updateId1 = {
-  nodeId: "root",
-  key: "id",
-  timestamp: 1,
-  value: {
-    type: "VALUE",
-    value: "c87c0491-5559-44b6-bf63-00a575e338ec",
-  },
-};
+const updateId1 = updateValue(
+  "root",
+  "id",
+  "c87c0491-5559-44b6-bf63-00a575e338ec",
+  1
+);
 
-const updateTitle2 = {
-  nodeId: "root",
-  key: "title",
-  timestamp: 2,
-  value: {
-    type: "VALUE",
-    value: "Example Domain",
-  },
-};
+const updateTitle2 = updateValue("root", "title", "Example Domain", 2);
 
-const updateUrl3 = {
-  nodeId: "root",
-  key: "url",
-  timestamp: 3,
-  value: {
-    type: "VALUE",
-    value: "https://example.com/",
-  },
-};
+const updateUrl3 = updateValue("root", "url", "https://example.com/", 3);
 
-const updateTitle4 = {
-  nodeId: "root",
-  key: "title",
-  timestamp: 4,
-  value: {
-    type: "VALUE",
-    value: "A new title",
-  },
-};
+const updateTitle4 = updateValue("root", "title", "A new title", 4);
 
-const updateStyleForeground5 = {
-  nodeId: "81572135-fbf5-4662-9a8a-8971272cc436",
-  key: "foreground",
-  timestamp: 5,
-  value: {
-    type: "VALUE",
-    value: "#ffffff",
-  },
-};
+const updateStyleForeground5 = updateValue(
+  "81572135-fbf5-4662-9a8a-8971272cc436",
+  "foreground",
+  "#ffffff",
+  5
+);
 
-const updateStyle6 = {
-  nodeId: "root",
-  key: "style",
-  timestamp: 6,
-  value: {
-    type: "NODE_REF",
-    nodeRef: "81572135-fbf5-4662-9a8a-8971272cc436",
-  },
-};
+const updateStyle6 = updateNodeRef(
+  "root",
+  "style",
+  "81572135-fbf5-4662-9a8a-8971272cc436",
+  6
+);
 
 describe(`emptyDocument()`, () => {
   test(`produces a document with no updates`, () => {
@@ -112,25 +86,8 @@ describe(`merge(a, b)`, () => {
   });
 
   test(`consistently resolves competing updates`, () => {
-    const changeA = {
-      nodeId: "root",
-      key: "title",
-      timestamp: 5,
-      value: {
-        type: "VALUE",
-        value: "New Proper Title",
-      },
-    };
-
-    const changeB = {
-      nodeId: "root",
-      key: "title",
-      timestamp: 5,
-      value: {
-        type: "VALUE",
-        value: "Competing title change",
-      },
-    };
+    const changeA = updateValue("root", "title", "One Title Change", 5);
+    const changeB = updateValue("root", "title", "Competing title change", 5);
 
     // Apply the changes in different orders
     const resultA = merge([updateId1, changeA], [changeB]);
@@ -146,25 +103,8 @@ describe(`merge(a, b)`, () => {
   });
 
   test(`delete wins for simultaneous updates`, () => {
-    const changeA = {
-      nodeId: "root",
-      key: "title",
-      timestamp: 5,
-      value: {
-        type: "VALUE",
-        value: "New Proper Title",
-      },
-    };
-
-    const changeB = {
-      nodeId: "root",
-      key: "title",
-      timestamp: 5,
-      value: {
-        type: "VALUE",
-        value: undefined,
-      },
-    };
+    const changeA = updateValue("root", "title", "Some New Title", 5);
+    const changeB = updateValue("root", "title", undefined, 5);
 
     // Apply the changes in different orders
     const resultA = merge([updateId1, changeA], [changeB]);
