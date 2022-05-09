@@ -1,4 +1,4 @@
-const { asObject, merge } = require(".");
+const { asObject, merge } = require("./crdt");
 
 const updateId1 = {
   nodeId: "root",
